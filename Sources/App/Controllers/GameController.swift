@@ -30,11 +30,11 @@ struct GameController: RouteCollection {
         let game = try req.content.decode(Game.self)
         
         guard game.title.count > 3 else {
-            return game.encodeResponse(status: .badRequest, for: req).transform(to: .custom(code: 400, reasonPhrase: "Invalid Title"))
+            throw GameError.invalidTitle
         }
         
         guard game.isGenresValid else {
-            return game.encodeResponse(status: .badRequest, for: req).transform(to: .custom(code: 400, reasonPhrase: "Invalid Genre"))
+            throw GameError.invalidGenres
         }
         
         return game.save(on: req.db).transform(to: .ok)
@@ -45,11 +45,11 @@ struct GameController: RouteCollection {
         let game = try req.content.decode(Game.self)
         
         guard game.title.count > 3 else {
-            return game.encodeResponse(status: .badRequest, for: req).transform(to: .custom(code: 400, reasonPhrase: "Invalid Title"))
+            throw GameError.invalidTitle
         }
         
         guard game.isGenresValid else {
-            return game.encodeResponse(status: .badRequest, for: req).transform(to: .custom(code: 400, reasonPhrase: "Invalid Genre"))
+            throw GameError.invalidGenres
         }
         
         return Game.find(game.id, on: req.db)
@@ -71,4 +71,3 @@ struct GameController: RouteCollection {
             .transform(to: .ok)
     }
 }
-
