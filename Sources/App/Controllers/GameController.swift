@@ -21,12 +21,12 @@ struct GameController: RouteCollection {
     }
     
     //MARK: GET /songs
-    func index(req: Request) throws -> EventLoopFuture<[Game]> {
-        return Game.query(on: req.db).all()
+    func index(req: Request) async throws -> [Game] {
+        try await Game.query(on: req.db).all()
     }
     
     //MARK: POST /songs
-    func create(req: Request) throws -> EventLoopFuture<HTTPStatus> {
+    func create(req: Request) async throws -> HTTPStatus {
         let game = try req.content.decode(Game.self)
         
         guard game.title.count > 3 else {
@@ -37,11 +37,12 @@ struct GameController: RouteCollection {
             throw GameError.invalidGenres
         }
         
-        return game.save(on: req.db).transform(to: .ok)
+        try await game.save(on: req.db)
+        return .ok
     }
     
     //MARK: PUT /songs
-    func update(req: Request) throws -> EventLoopFuture<HTTPStatus> {
+    func update(req: Request) async throws -> HTTPStatus {
         let game = try req.content.decode(Game.self)
         
         guard game.title.count > 3 else {
@@ -52,22 +53,24 @@ struct GameController: RouteCollection {
             throw GameError.invalidGenres
         }
         
-        return Game.find(game.id, on: req.db)
-            .unwrap(or: Abort(.notFound))
-            .flatMap {
-                $0.title = game.title
-                $0.genres = game.genres
-                return $0.update(on: req.db).transform(to: .ok)
-            }
+        guard let gameFromDB = try await Game.find(game.id, on: req.db) else {
+            throw Abort(.notFound)
+        }
+        gameFromDB.title = game.title
+        gameFromDB.genres = game.genres
+        
+        try await gameFromDB.update(on: req.db)
+        return .ok
     }
     
     //MARK: DELETE /songs/id
-    func delete(req: Request) throws -> EventLoopFuture<HTTPStatus> {
-        return Game.find(req.parameters.get("gameID"), on: req.db)
-            .unwrap(or: Abort(.notFound))
-            .flatMap {
-                $0.delete(on: req.db)
-            }
-            .transform(to: .ok)
+    func delete(req: Request) async throws -> HTTPStatus {
+        
+        guard let gameFromDB = try await Game.find(req.parameters.get("gameID"), on: req.db) else {
+            throw Abort(.notFound)
+        }
+        
+        try await gameFromDB.delete(on: req.db)
+        return .ok
     }
 }
